@@ -1,0 +1,25 @@
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin button-base {
+  padding: $spacing-md $spacing-xl;
+  border-radius: $radius-full;
+  transition: all $transition-fast;
+  font-weight: 500;
+}
+
+@mixin card {
+  background: $background-light;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  box-shadow: $shadow-lg;
+}
