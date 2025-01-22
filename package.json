@@ -11,7 +11,10 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint . --ext .vue,.cjs,.ts --fix --ignore-path .gitignore",
     "format": "prettier --write \"src/**/*.{ts,vue,scss}\"",
-    "type-check:watch": "vue-tsc --watch"
+    "type-check:watch": "vue-tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "lucide-vue-next": "^0.473.0",
@@ -20,6 +23,7 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "jest-environment-jsdom": "^29.7.0",
     "@tsconfig/node22": "^22.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",

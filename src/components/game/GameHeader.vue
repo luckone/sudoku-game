@@ -13,9 +13,9 @@
 			</div>
 		</div>
 
-			<button class="leaderboard-button" @click="$emit('toggle-leaderboard')">
-				<Trophy class="icon" />
-			</button>
+		<button class="leaderboard-button" @click="$emit('toggle-leaderboard')">
+			<Trophy class="icon" />
+		</button>
 	</div>
 </template>
 

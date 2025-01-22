@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { GameDifficulty, type GameState, GameStatus } from '@/types/game';
 import { sudokuGenerator } from '@/utils/sudokuGenerator.ts';
-import { mockLeaderboard } from '@/mock/leaderboard.ts';
 
 export const useGameStore = defineStore('game', {
 	state: (): GameState => ({
@@ -30,7 +29,12 @@ export const useGameStore = defineStore('game', {
 			.fill(null)
 			.map(() => Array(9).fill(0)),
 		completedSections: [],
-		leaderboard: mockLeaderboard,
+		leaderboard: {
+			[GameDifficulty.BEGINNER]: [],
+			[GameDifficulty.INTERMEDIATE]: [],
+			[GameDifficulty.HARD]: [],
+			[GameDifficulty.EXPERT]: [],
+		},
 	}),
 
 	actions: {

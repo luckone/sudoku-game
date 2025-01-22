@@ -58,7 +58,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
 import { useAuthStore } from '@/stores/auth';
-import { mockLeaderboard } from '@/mock/leaderboard';
 import { Trophy } from 'lucide-vue-next';
 
 import GameHeader from '@/components/game/GameHeader.vue';
@@ -78,7 +77,7 @@ const showLeaderboard = ref(false);
 const showGameComplete = ref(false);
 
 const gameTime = computed(() => gameStore.gameTime);
-const leaderboardData = computed(() => mockLeaderboard);
+const leaderboardData = computed(() => gameStore.leaderboard);
 
 let timer: number;
 
