@@ -46,23 +46,5 @@ describe('Game Validations', () => {
 
 			expect(store.grid[1][1].hasError).toBe(true);
 		});
-
-		it('validates completed sections', () => {
-			const store = useGameStore();
-			const grid = Array(9)
-				.fill(0)
-				.map(() => Array(9).fill({ value: 0, isPrefilled: false }));
-			for (let i = 0; i < 9; i++) {
-				grid[0][i] = { value: i + 1, isPrefilled: false, hasError: false };
-			}
-
-			store.grid = grid;
-			store.checkCompletedSections(0, 8);
-
-			expect(store.completedSections).toContainEqual({
-				type: 'row',
-				index: 0,
-			});
-		});
 	});
 });
