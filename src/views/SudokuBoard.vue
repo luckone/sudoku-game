@@ -4,27 +4,26 @@
 			<div class="container">
 				<div class="main-section">
 					<GameHeader
-						:player-name="authStore.user.name.name"
+						:player-name="user.name.name"
 						:time="gameTime"
-						:score="gameStore.totalScore"
+						:score="totalScore"
 						@back="router.push('/')"
 						@toggle-leaderboard="showLeaderboard = true"
 					/>
 
 					<div class="game-board">
 						<GameGrid
-							:grid="gameStore.grid"
+							:grid="grid"
 							:selected-cell="currentSelected"
 							@select="selectCell"
 						/>
 					</div>
 
 					<div class="game-controls">
-						<NumberPad :grid="gameStore.grid" @input="inputNumber" />
-
+						<NumberPad :grid="grid" @input="inputNumber" />
 						<GameControls
-							:hints-remaining="gameStore.hintsRemaining"
-							:can-undo="gameStore.canUndo"
+							:hints-remaining="hintsRemaining"
+							:can-undo="canUndo"
 							@undo="handleUndo"
 							@hint="handleHint"
 						/>
@@ -37,15 +36,15 @@
 					<Trophy class="icon" />
 					Leaderboard
 				</template>
-				<Leaderboard :data="leaderboardData" compact />
+				<Leaderboard :data="leaderboard" compact />
 			</Drawer>
 
 			<GameCompleteModal
 				v-if="showGameComplete"
-				:base-score="gameStore.baseScore"
-				:time-bonus="gameStore.timeBonus"
-				:total-score="gameStore.totalScore"
-				:time="gameStore.gameTime"
+				:base-score="baseScore"
+				:time-bonus="timeBonus"
+				:total-score="totalScore"
+				:time="gameTime"
 				@close="handleGameCompleteClose"
 				@new-game="startNewGame"
 			/>
@@ -54,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
 import { useAuthStore } from '@/stores/auth';
@@ -69,21 +68,41 @@ import Drawer from '@/components/common/Drawer.vue';
 import GameCompleteModal from '@/components/modals/GameCompleteModal.vue';
 
 const router = useRouter();
+const { user } = toRefs(useAuthStore());
 const gameStore = useGameStore();
-const authStore = useAuthStore();
+
+const {
+	grid,
+	totalScore,
+	hintsRemaining,
+	canUndo,
+	leaderboard,
+	gameTime,
+	gameStatus,
+	difficulty,
+	baseScore,
+	timeBonus,
+	isGameComplete,
+} = toRefs(gameStore);
+
+const {
+	makeMove,
+	initializeGame,
+	incrementTime,
+	undoMove,
+	useHint,
+	calculateFinalScore,
+} = gameStore;
 
 const currentSelected = ref<[number, number] | null>(null);
 const showLeaderboard = ref(false);
 const showGameComplete = ref(false);
 
-const gameTime = computed(() => gameStore.gameTime);
-const leaderboardData = computed(() => gameStore.leaderboard);
-
 let timer: number;
 
 onMounted(() => {
-	if (gameStore.gameStatus === 'IDLE') {
-		gameStore.initializeGame(gameStore.difficulty);
+	if (gameStatus.value === 'IDLE') {
+		initializeGame(difficulty.value);
 	}
 	startTimer();
 	window.addEventListener('keydown', handleKeyPress);
@@ -94,18 +113,13 @@ onUnmounted(() => {
 	window.removeEventListener('keydown', handleKeyPress);
 });
 
-watch(
-	() => gameStore.isGameComplete,
-	(isComplete) => {
-		if (isComplete) {
-			handleGameComplete();
-		}
-	}
-);
+watch(isGameComplete, (complete) => {
+	if (complete) handleGameComplete();
+});
 
 const handleGameComplete = () => {
 	clearInterval(timer);
-	gameStore.calculateFinalScore();
+	calculateFinalScore();
 	showGameComplete.value = true;
 };
 
@@ -113,14 +127,14 @@ const inputNumber = (number: number) => {
 	if (!currentSelected.value) return;
 
 	const [row, col] = currentSelected.value;
-	if (!gameStore.grid[row][col].isPrefilled) {
-		gameStore.makeMove(row, col, number);
+	if (!grid.value[row][col].isPrefilled) {
+		makeMove(row, col, number);
 	}
 };
 
 const startNewGame = () => {
 	showGameComplete.value = false;
-	gameStore.initializeGame(gameStore.difficulty);
+	initializeGame(difficulty.value);
 	startTimer();
 };
 
@@ -130,26 +144,22 @@ const handleGameCompleteClose = () => {
 };
 
 const startTimer = () => {
-	timer = setInterval(() => {
-		gameStore.incrementTime();
-	}, 1000);
+	timer = setInterval(incrementTime, 1000);
 };
 
 const selectCell = (row: number, col: number) => {
-	if (!gameStore.grid[row][col].isPrefilled) {
+	if (!grid.value[row][col].isPrefilled) {
 		currentSelected.value = [row, col];
 	}
 };
 
-const handleUndo = () => {
-	gameStore.undoMove();
-};
+const handleUndo = undoMove;
 
 const handleHint = () => {
-	if (currentSelected.value && gameStore.hintsRemaining > 0) {
+	if (currentSelected.value && hintsRemaining.value > 0) {
 		const [row, col] = currentSelected.value;
-		if (!gameStore.grid[row][col].isPrefilled) {
-			gameStore.useHint(row, col);
+		if (!grid.value[row][col].isPrefilled) {
+			useHint(row, col);
 		}
 	}
 };

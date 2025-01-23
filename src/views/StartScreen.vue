@@ -1,7 +1,7 @@
 <template>
 	<div class="start-screen">
 		<div class="content card">
-			<UserInfo v-if="!authStore.user.isGuest" :user="authStore.user" />
+			<UserInfo v-if="!user.isGuest" :user="user" />
 
 			<h1>Sudoku</h1>
 			<p class="subtitle">Pick your challenge level</p>
@@ -20,7 +20,7 @@
 				Start Game
 			</button>
 
-			<Leaderboard :data="leaderboardData" />
+			<Leaderboard :data="leaderboard" />
 		</div>
 
 		<SignInModal
@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
 import { useAuthStore } from '@/stores/auth';
@@ -45,13 +45,14 @@ import Leaderboard from '@/components/leaderboard/Leaderboard.vue';
 import SignInModal from '@/components/modals/SignInModal.vue';
 
 const router = useRouter();
+const { user } = toRefs(useAuthStore());
 const gameStore = useGameStore();
-const authStore = useAuthStore();
+
+const { leaderboard } = toRefs(gameStore);
+const { initializeGame } = gameStore;
 
 const selectedDifficulty = ref<GameDifficulty>(GameDifficulty.BEGINNER);
 const showSignInModal = ref(false);
-
-const leaderboardData = computed(() => gameStore.leaderboard);
 
 const selectDifficulty = (difficulty: GameDifficulty) => {
 	selectedDifficulty.value = difficulty;
@@ -59,12 +60,12 @@ const selectDifficulty = (difficulty: GameDifficulty) => {
 
 const startGame = () => {
 	if (selectedDifficulty.value) {
-		gameStore.initializeGame(selectedDifficulty.value);
+		initializeGame(selectedDifficulty.value);
 		router.push('/game');
 	}
 };
 const handleStartGame = () => {
-	if (authStore.user.isGuest) {
+	if (user.value.isGuest) {
 		showSignInModal.value = true;
 	} else {
 		startGame();

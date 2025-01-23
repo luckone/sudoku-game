@@ -27,7 +27,6 @@
 
 <script setup lang="ts">
 import { type Cell } from '@/types/game';
-import { useGameStore } from '@/stores/game';
 
 interface Props {
 	grid: Cell[][];
@@ -40,29 +39,31 @@ defineEmits<{
 	(e: 'select', row: number, col: number): void;
 }>();
 
-const { completedSections } = useGameStore();
-
 const isSelected = (row: number, col: number): boolean => {
 	return props.selectedCell?.[0] === row && props.selectedCell?.[1] === col;
 };
 
-const isRowCompleted = (rowIndex: number) => {
-	return completedSections.some(
-		(section) => section.type === 'row' && section.index === rowIndex
-	);
-};
+const isRowCompleted = (rowIndex: number) =>
+	props.grid[rowIndex].every((cell) => !cell.hasError && cell.value !== 0);
 
-const isColumnCompleted = (colIndex: number) => {
-	return completedSections.some(
-		(section) => section.type === 'column' && section.index === colIndex
+const isColumnCompleted = (colIndex: number) =>
+	props.grid.every(
+		(row) => !row[colIndex].hasError && row[colIndex].value !== 0
 	);
-};
 
 const isBoxCompleted = (rowIndex: number, colIndex: number) => {
-	const boxIndex = Math.floor(rowIndex / 3) * 3 + Math.floor(colIndex / 3);
-	return completedSections.some(
-		(section) => section.type === 'box' && section.index === boxIndex
-	);
+	const boxRow = Math.floor(rowIndex / 3) * 3;
+	const boxCol = Math.floor(colIndex / 3) * 3;
+
+	for (let i = 0; i < 3; i++) {
+		for (let j = 0; j < 3; j++) {
+			const cell = props.grid[boxRow + i][boxCol + j];
+			if (cell.value === 0 || cell.hasError) {
+				return false;
+			}
+		}
+	}
+	return true;
 };
 </script>
 
