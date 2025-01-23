@@ -1,9 +1,9 @@
 <template>
 	<div class="user-info">
 		<div class="avatar">
-			{{ user.name[0].toUpperCase() }}
+			{{ user.name.name[0].toUpperCase() }}
 		</div>
-		<span class="name">{{ user.name }}</span>
+		<span class="name">{{ user.name.name }}</span>
 	</div>
 </template>
 
@@ -21,6 +21,7 @@ defineProps<{
 .user-info {
 	display: flex;
 	align-items: center;
+  justify-content: center;
 	gap: $spacing-sm;
 	margin-bottom: $spacing-lg;
 

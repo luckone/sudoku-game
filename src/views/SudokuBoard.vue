@@ -4,7 +4,7 @@
 			<div class="container">
 				<div class="main-section">
 					<GameHeader
-						:player-name="authStore.user.name"
+						:player-name="authStore.user.name.name"
 						:time="gameTime"
 						:score="gameStore.totalScore"
 						@back="router.push('/')"
@@ -107,10 +107,6 @@ const handleGameComplete = () => {
 	clearInterval(timer);
 	gameStore.calculateFinalScore();
 	showGameComplete.value = true;
-
-	if (!authStore.user.isGuest && gameStore.isHighScore) {
-		//TODO: Save score logic here
-	}
 };
 
 const inputNumber = (number: number) => {

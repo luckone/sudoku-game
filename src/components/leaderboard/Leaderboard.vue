@@ -24,12 +24,18 @@ import type { LeaderboardEntry } from '@/types/game';
 import LeaderboardSection from './LeaderboardSection.vue';
 import { Medal } from 'lucide-vue-next';
 import { GameDifficulty } from '@/types/game';
+import { onMounted } from 'vue';
+import { useGameStore } from '@/stores/game.ts';
 
 defineProps<{
 	data: Record<string, LeaderboardEntry[]>;
 	currentDifficulty?: string;
 	compact?: boolean;
 }>();
+
+const gameStore = useGameStore();
+
+onMounted(() => gameStore.fetchLeaderboard());
 </script>
 
 <style lang="scss" scoped>

@@ -11,7 +11,7 @@
 				<div class="rank">{{ index + 1 }}</div>
 				<div class="details">
 					<span class="points">{{ score.points }}</span>
-					<span class="player">{{ score.player }}</span>
+					<span class="player">{{ JSON.parse(score.player).name }}</span>
 				</div>
 			</div>
 			<div v-if="!scores.length" class="no-scores">No scores yet</div>

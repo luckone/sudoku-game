@@ -1,6 +1,8 @@
 export interface User {
 	id?: string;
-	name: string;
+	name: {
+		name: string; // TODO: fix on BE
+	};
 	scores?: GameScore[];
 	isGuest: boolean;
 }
@@ -11,6 +13,7 @@ export interface CompletedSection {
 }
 
 export interface GameScore {
+	id?: string;
 	points: number;
 	difficulty: GameDifficulty;
 	date: Date;

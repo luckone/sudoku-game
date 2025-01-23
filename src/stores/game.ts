@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { GameDifficulty, type GameState, GameStatus } from '@/types/game';
 import { sudokuGenerator } from '@/utils/sudokuGenerator.ts';
+import { scoreApi } from '@/api';
+import { useAuthStore } from './auth';
 
 export const useGameStore = defineStore('game', {
 	state: (): GameState => ({
@@ -38,6 +40,35 @@ export const useGameStore = defineStore('game', {
 	}),
 
 	actions: {
+		async saveScore() {
+			const authStore = useAuthStore();
+			if (this.isGameComplete && !authStore.user.isGuest && authStore.user.id) {
+				try {
+					await scoreApi.submit({
+						userId: authStore.user.id,
+						points: this.totalScore,
+						time: this.gameTime,
+						difficulty: this.difficulty,
+					});
+					await this.fetchLeaderboard();
+				} catch (error) {
+					console.error('Error saving score:', error);
+					throw error;
+				}
+			}
+		},
+
+		async fetchLeaderboard() {
+			try {
+				const response = await scoreApi.getLeaderboard();
+				this.leaderboard = response;
+				console.log(response);
+			} catch (error) {
+				console.error('Error fetching leaderboard:', error);
+				throw error;
+			}
+		},
+
 		createPuzzleFromSolution(solution: number[][], difficulty: GameDifficulty) {
 			const puzzle = solution.map((row) =>
 				row.map((value) => ({
@@ -118,14 +149,17 @@ export const useGameStore = defineStore('game', {
 
 		checkCompletedSections(row: number, col: number) {
 			const isRowComplete = this.grid[row].every(
-				(cell) => cell.value !== 0 && !cell.hasError
+				(cell) =>
+					!cell.hasError && cell.value === this.solution[row][cell.value - 1]
 			);
 			if (isRowComplete) {
 				this.addCompletedSection('row', row);
 			}
 
 			const isColumnComplete = this.grid.every(
-				(row) => row[col].value !== 0 && !row[col].hasError
+				(rowArray) =>
+					!rowArray[col].hasError &&
+					rowArray[col].value === this.solution[rowArray[col].value - 1][col]
 			);
 			if (isColumnComplete) {
 				this.addCompletedSection('column', col);
@@ -134,15 +168,18 @@ export const useGameStore = defineStore('game', {
 			const boxRow = Math.floor(row / 3) * 3;
 			const boxCol = Math.floor(col / 3) * 3;
 			let isBoxComplete = true;
+
 			for (let i = 0; i < 3 && isBoxComplete; i++) {
 				for (let j = 0; j < 3; j++) {
 					const cell = this.grid[boxRow + i][boxCol + j];
-					if (cell.value === 0 || cell.hasError) {
+					const solutionVal = this.solution[boxRow + i][boxCol + j];
+					if (cell.value === 0 || cell.hasError || cell.value !== solutionVal) {
 						isBoxComplete = false;
 						break;
 					}
 				}
 			}
+
 			if (isBoxComplete) {
 				const boxIndex = Math.floor(row / 3) * 3 + Math.floor(col / 3);
 				this.addCompletedSection('box', boxIndex);
@@ -150,14 +187,12 @@ export const useGameStore = defineStore('game', {
 		},
 
 		addCompletedSection(type: 'row' | 'column' | 'box', index: number) {
-			const existing = this.completedSections.find(
+			const sectionExists = this.completedSections.some(
 				(section) => section.type === type && section.index === index
 			);
-			if (!existing) {
-				this.completedSections.push({
-					type,
-					index,
-				});
+
+			if (!sectionExists) {
+				this.completedSections.push({ type, index });
 			}
 		},
 
@@ -216,12 +251,13 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
-		calculateFinalScore() {
+		async calculateFinalScore() {
 			this.timeBonus = Math.max(0, 500 - this.gameTime);
 			this.gameStatus = GameStatus.COMPLETED;
+			await this.saveScore();
 		},
 
-		initializeGame(difficulty: GameDifficulty) {
+		async initializeGame(difficulty: GameDifficulty) {
 			const solution = sudokuGenerator.generateSolution();
 			this.solution = JSON.parse(JSON.stringify(solution));
 			this.grid = this.createPuzzleFromSolution(solution, difficulty);

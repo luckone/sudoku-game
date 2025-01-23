@@ -12,14 +12,18 @@
 					<input
 						v-model="name"
 						type="text"
+						:class="{ error: error }"
 						placeholder="Enter your name"
 						required
 					/>
+					<span v-if="error" class="error-message">{{ error }}</span>
 				</div>
 
-				<button class="primary-button" type="submit">Continue Playing</button>
+				<button class="primary-button" type="submit" :disabled="isLoading">
+					{{ isLoading ? 'Signing in...' : 'Continue Playing' }}
+				</button>
 
-				<button type="button" class="text-button" @click="continueAsGuest">
+				<button type="button" class="text-button" @click="$emit('close')">
 					Continue as Guest
 				</button>
 			</form>
@@ -38,17 +42,23 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore();
 const name = ref('');
+const error = ref('');
+const isLoading = ref(false);
 
-const handleSubmit = () => {
-	if (name.value.trim()) {
-		authStore.signIn(name.value.trim());
+const handleSubmit = async () => {
+	if (!name.value.trim()) return;
+	if (error.value) error.value = '';
+
+	try {
+		isLoading.value = true;
+		await authStore.signIn(name.value.trim());
 		emit('signed-in');
-		emit('close');
+	} catch (err: any) {
+		error.value =
+			err.response?.data?.message || 'Failed to sign in. Please try again.';
+	} finally {
+		isLoading.value = false;
 	}
-};
-
-const continueAsGuest = () => {
-	emit('close');
 };
 </script>
 
@@ -124,6 +134,18 @@ const continueAsGuest = () => {
 				color: $text-primary;
 			}
 		}
+	}
+}
+
+.input-group {
+	.error {
+		border-color: red;
+	}
+
+	.error-message {
+		color: red;
+		font-size: 0.875rem;
+		margin-top: 0.25rem;
 	}
 }
 </style>
