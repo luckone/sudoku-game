@@ -1,6 +1,6 @@
 # sudoku-game
 
-Demo:
+Demo: https://sudoku-game-652i.vercel.app/
 
 ## Project Setup
 
