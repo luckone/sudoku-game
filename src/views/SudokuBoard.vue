@@ -98,7 +98,7 @@ const currentSelected = ref<[number, number] | null>(null);
 const showLeaderboard = ref(false);
 const showGameComplete = ref(false);
 
-let timer: number;
+let timer: ReturnType<typeof setInterval>;
 
 onMounted(() => {
 	if (gameStatus.value === 'IDLE') {
