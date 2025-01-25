@@ -3,13 +3,21 @@ import { GameDifficulty, type GameState, GameStatus } from '@/types/game';
 import { sudokuGenerator } from '@/utils/sudokuGenerator.ts';
 import { scoreApi } from '@/api';
 import { useAuthStore } from './auth';
+import { GAME_CONSTANTS } from '@/constants';
+
+/**
+ * @store GameStore
+ * @description Central store managing Sudoku game state and logic
+ * Handles game initialization, move validation, scoring, and game progression
+ * Integrates with authentication and leaderboard systems
+ */
 
 export const useGameStore = defineStore('game', {
 	state: (): GameState => ({
-		grid: Array(9)
+		grid: Array(GAME_CONSTANTS.GRID_SIZE)
 			.fill(null)
 			.map(() =>
-				Array(9)
+				Array(GAME_CONSTANTS.GRID_SIZE)
 					.fill(null)
 					.map(() => ({
 						value: 0,
@@ -22,14 +30,14 @@ export const useGameStore = defineStore('game', {
 		difficulty: GameDifficulty.BEGINNER,
 		baseScore: 0,
 		timeBonus: 0,
-		hintPenalty: 3,
-		hintsRemaining: 10,
+		hintPenalty: GAME_CONSTANTS.SCORING.INITIAL_HINT_PENALTY,
+		hintsRemaining: GAME_CONSTANTS.SCORING.STARTING_HINTS,
 		gameTime: 0,
 		gameStatus: GameStatus.IDLE,
 		movesHistory: [],
-		solution: Array(9)
+		solution: Array(GAME_CONSTANTS.GRID_SIZE)
 			.fill(null)
-			.map(() => Array(9).fill(0)),
+			.map(() => Array(GAME_CONSTANTS.GRID_SIZE).fill(0)),
 		completedSections: [],
 		leaderboard: {
 			[GameDifficulty.BEGINNER]: [],
@@ -40,6 +48,7 @@ export const useGameStore = defineStore('game', {
 	}),
 
 	actions: {
+		// Saves your score to the leaderboard if you're logged in
 		async saveScore() {
 			const authStore = useAuthStore();
 			if (this.isGameComplete && !authStore.user.isGuest && authStore.user.id) {
@@ -58,17 +67,19 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Gets the latest high scores from the server
 		async fetchLeaderboard() {
 			try {
 				const response = await scoreApi.getLeaderboard();
 				this.leaderboard = response;
-				console.log(response);
 			} catch (error) {
 				console.error('Error fetching leaderboard:', error);
 				throw error;
 			}
 		},
 
+		// Takes a solved puzzle and hides numbers based on difficulty
+		// More numbers are hidden for harder difficulties
 		createPuzzleFromSolution(solution: number[][], difficulty: GameDifficulty) {
 			const puzzle = solution.map((row) =>
 				row.map((value) => ({
@@ -79,23 +90,22 @@ export const useGameStore = defineStore('game', {
 				}))
 			);
 
-			const totalCells = 81;
-			const visibleCellsRange = {
-				[GameDifficulty.BEGINNER]: { min: 36, max: 40 },
-				[GameDifficulty.INTERMEDIATE]: { min: 32, max: 36 },
-				[GameDifficulty.HARD]: { min: 28, max: 32 },
-				[GameDifficulty.EXPERT]: { min: 24, max: 28 },
-			};
-
-			const range = visibleCellsRange[difficulty];
+			// Different difficulties have different ranges of visible numbers
 			const visibleCells =
-				Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
-			const cellsToHide = totalCells - visibleCells;
+				Math.floor(
+					Math.random() *
+						(GAME_CONSTANTS.VISIBLE_CELLS[difficulty].MAX -
+							GAME_CONSTANTS.VISIBLE_CELLS[difficulty].MIN +
+							1)
+				) + GAME_CONSTANTS.VISIBLE_CELLS[difficulty].MIN;
 
+			const cellsToHide = GAME_CONSTANTS.TOTAL_CELLS - visibleCells;
+
+			// Randomly hide cells until we reach target number
 			let hiddenCells = 0;
 			while (hiddenCells < cellsToHide) {
-				const row = Math.floor(Math.random() * 9);
-				const col = Math.floor(Math.random() * 9);
+				const row = Math.floor(Math.random() * GAME_CONSTANTS.GRID_SIZE);
+				const col = Math.floor(Math.random() * GAME_CONSTANTS.GRID_SIZE);
 
 				if (puzzle[row][col].isPrefilled) {
 					puzzle[row][col] = {
@@ -111,6 +121,8 @@ export const useGameStore = defineStore('game', {
 			return puzzle;
 		},
 
+		// Handles when you put a number in a cell
+		// Checks if it's correct and updates your score
 		makeMove(row: number, col: number, value: number) {
 			if (this.grid[row][col].isPrefilled) return;
 
@@ -132,6 +144,8 @@ export const useGameStore = defineStore('game', {
 			});
 		},
 
+		// Checks if a move follows Sudoku rules
+		// Updates the cell's error state and score
 		validateMove(row: number, col: number) {
 			const value = this.grid[row][col].value;
 			let hasError = false;
@@ -147,6 +161,8 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Checks if you've completed any rows, columns, or boxes
+		// Called after each move
 		checkCompletedSections(row: number, col: number) {
 			const isRowComplete = this.grid[row].every(
 				(cell) =>
@@ -159,18 +175,21 @@ export const useGameStore = defineStore('game', {
 			const isColumnComplete = this.grid.every(
 				(rowArray) =>
 					!rowArray[col].hasError &&
-					rowArray[col].value === this.solution[rowArray[col].value - 1][col]
+					rowArray[col].value === this.solution[row][col]
 			);
 			if (isColumnComplete) {
 				this.addCompletedSection('column', col);
 			}
 
-			const boxRow = Math.floor(row / 3) * 3;
-			const boxCol = Math.floor(col / 3) * 3;
+			const boxRow =
+				Math.floor(row / GAME_CONSTANTS.BOX_SIZE) * GAME_CONSTANTS.BOX_SIZE;
+			const boxCol =
+				Math.floor(col / GAME_CONSTANTS.BOX_SIZE) * GAME_CONSTANTS.BOX_SIZE;
 			let isBoxComplete = true;
 
-			for (let i = 0; i < 3 && isBoxComplete; i++) {
-				for (let j = 0; j < 3; j++) {
+			// Check all cells in the 3x3 box
+			for (let i = 0; i < GAME_CONSTANTS.BOX_SIZE && isBoxComplete; i++) {
+				for (let j = 0; j < GAME_CONSTANTS.BOX_SIZE; j++) {
 					const cell = this.grid[boxRow + i][boxCol + j];
 					const solutionVal = this.solution[boxRow + i][boxCol + j];
 					if (cell.value === 0 || cell.hasError || cell.value !== solutionVal) {
@@ -181,11 +200,14 @@ export const useGameStore = defineStore('game', {
 			}
 
 			if (isBoxComplete) {
-				const boxIndex = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+				const boxIndex =
+					Math.floor(row / GAME_CONSTANTS.BOX_SIZE) * GAME_CONSTANTS.BOX_SIZE +
+					Math.floor(col / GAME_CONSTANTS.BOX_SIZE);
 				this.addCompletedSection('box', boxIndex);
 			}
 		},
 
+		// Marks a section (row/column/box) as complete
 		addCompletedSection(type: 'row' | 'column' | 'box', index: number) {
 			const sectionExists = this.completedSections.some(
 				(section) => section.type === type && section.index === index
@@ -197,9 +219,13 @@ export const useGameStore = defineStore('game', {
 		},
 
 		updateScore(isError: boolean) {
-			this.baseScore += isError ? -1 : 5;
+			this.baseScore += isError
+				? GAME_CONSTANTS.SCORING.ERROR_PENALTY
+				: GAME_CONSTANTS.SCORING.CORRECT_MOVE;
 		},
 
+		// Gives you the correct number for a cell
+		// Costs points and increases future hint penalties
 		useHint(row: number, col: number) {
 			if (this.hintsRemaining > 0 && !this.grid[row][col].isPrefilled) {
 				const correctValue = this.solution[row][col];
@@ -211,7 +237,7 @@ export const useGameStore = defineStore('game', {
 
 				this.baseScore -= this.hintPenalty;
 				this.hintsRemaining--;
-				this.hintPenalty++;
+				this.hintPenalty++; // Each subsequent hint costs more
 
 				const scoreChange = this.baseScore - previousScore;
 
@@ -228,6 +254,8 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Takes back your last move
+		// Removes any errors and rechecks completed sections
 		undoMove() {
 			const lastMove = this.movesHistory.pop();
 			if (lastMove) {
@@ -240,10 +268,11 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Rechecks all completed sections after undoing
 		revalidateCompletedSections() {
 			this.completedSections = [];
-			for (let i = 0; i < 9; i++) {
-				for (let j = 0; j < 9; j++) {
+			for (let i = 0; i < GAME_CONSTANTS.GRID_SIZE; i++) {
+				for (let j = 0; j < GAME_CONSTANTS.GRID_SIZE; j++) {
 					if (this.grid[i][j].value !== 0) {
 						this.checkCompletedSections(i, j);
 					}
@@ -251,12 +280,18 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Adds time bonus and saves your final score
 		async calculateFinalScore() {
-			this.timeBonus = Math.max(0, 500 - this.gameTime);
+			this.timeBonus = Math.max(
+				0,
+				GAME_CONSTANTS.SCORING.MAX_TIME_BONUS - this.gameTime
+			);
 			this.gameStatus = GameStatus.COMPLETED;
 			await this.saveScore();
 		},
 
+		// Sets up a new game with chosen difficulty
+		// Generates puzzle and resets all game stats
 		async initializeGame(difficulty: GameDifficulty) {
 			const solution = sudokuGenerator.generateSolution();
 			this.solution = JSON.parse(JSON.stringify(solution));
@@ -265,8 +300,8 @@ export const useGameStore = defineStore('game', {
 			this.gameStatus = GameStatus.PLAYING;
 			this.baseScore = 0;
 			this.timeBonus = 0;
-			this.hintPenalty = 3;
-			this.hintsRemaining = 10;
+			this.hintPenalty = GAME_CONSTANTS.SCORING.INITIAL_HINT_PENALTY;
+			this.hintsRemaining = GAME_CONSTANTS.SCORING.STARTING_HINTS;
 			this.gameTime = 0;
 			this.movesHistory = [];
 			this.completedSections = [];
@@ -285,8 +320,8 @@ export const useGameStore = defineStore('game', {
 		canUndo: (state) => state.movesHistory.length > 0,
 
 		isGameComplete(): boolean {
-			for (let row = 0; row < 9; row++) {
-				for (let col = 0; col < 9; col++) {
+			for (let row = 0; row < GAME_CONSTANTS.GRID_SIZE; row++) {
+				for (let col = 0; col < GAME_CONSTANTS.GRID_SIZE; col++) {
 					if (this.grid[row][col].value === 0 || this.grid[row][col].hasError) {
 						return false;
 					}
@@ -300,10 +335,10 @@ export const useGameStore = defineStore('game', {
 		},
 
 		completedDigits: (state): number[] => {
-			const digitCounts = new Array(10).fill(0);
+			const digitCounts = new Array(GAME_CONSTANTS.GRID_SIZE + 1).fill(0);
 
-			for (let row = 0; row < 9; row++) {
-				for (let col = 0; col < 9; col++) {
+			for (let row = 0; row < GAME_CONSTANTS.GRID_SIZE; row++) {
+				for (let col = 0; col < GAME_CONSTANTS.GRID_SIZE; col++) {
 					const value = state.grid[row][col].value;
 					if (value > 0) {
 						digitCounts[value]++;
@@ -313,7 +348,9 @@ export const useGameStore = defineStore('game', {
 
 			return digitCounts
 				.map((count, digit) => ({ digit, count }))
-				.filter(({ digit, count }) => digit !== 0 && count >= 9)
+				.filter(
+					({ digit, count }) => digit !== 0 && count >= GAME_CONSTANTS.GRID_SIZE
+				)
 				.map(({ digit }) => digit);
 		},
 	},

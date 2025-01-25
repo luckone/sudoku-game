@@ -6,6 +6,13 @@ interface AuthState {
 	user: User;
 }
 
+/**
+ * @store AuthStore
+ * @description Manages user authentication state and interactions
+ * Handles guest vs authenticated users, persists data
+ * Integrates with user API for account management
+ */
+
 export const useAuthStore = defineStore('auth', {
 	state: (): AuthState => ({
 		user: {
