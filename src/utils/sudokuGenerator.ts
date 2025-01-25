@@ -1,4 +1,12 @@
+/**
+ * @class SudokuGenerator
+ * @description Generates valid Sudoku puzzles using transformation-based approach
+ * Starting with a base valid solution, applies random transformations to create
+ * unique puzzles.
+ */
+
 export class SudokuGenerator {
+	// Creates the starting pattern for our Sudoku
 	private generateBaseSolution(): number[][] {
 		const base = Array(9)
 			.fill(0)
@@ -16,6 +24,7 @@ export class SudokuGenerator {
 		return base;
 	}
 
+	// Takes our basic pattern and mixes it up
 	generateSolution(): number[][] {
 		const puzzle = this.generateBaseSolution();
 
@@ -44,6 +53,7 @@ export class SudokuGenerator {
 		return puzzle;
 	}
 
+	// Swaps two rows in the same 3x3 block
 	private swapRows(puzzle: number[][]) {
 		const block = Math.floor(Math.random() * 3);
 		const row1 = block * 3 + Math.floor(Math.random() * 3);
@@ -56,6 +66,7 @@ export class SudokuGenerator {
 		[puzzle[row1], puzzle[row2]] = [puzzle[row2], puzzle[row1]];
 	}
 
+	// Swaps two columns in the same 3x3 block
 	private swapColumns(puzzle: number[][]) {
 		const block = Math.floor(Math.random() * 3);
 		const col1 = block * 3 + Math.floor(Math.random() * 3);
@@ -73,6 +84,7 @@ export class SudokuGenerator {
 		}
 	}
 
+	// Swaps two 3x3 blocks of rows
 	private swapRowBlocks(puzzle: number[][]) {
 		const block1 = Math.floor(Math.random() * 3);
 		let block2 = Math.floor(Math.random() * 3);
@@ -88,6 +100,7 @@ export class SudokuGenerator {
 		}
 	}
 
+	// Swaps two 3x3 blocks of columns
 	private swapColumnBlocks(puzzle: number[][]) {
 		const block1 = Math.floor(Math.random() * 3);
 		let block2 = Math.floor(Math.random() * 3);
@@ -109,6 +122,7 @@ export class SudokuGenerator {
 		}
 	}
 
+	// Rotates the whole grid clockwise
 	private rotateGrid(puzzle: number[][]) {
 		const n = puzzle.length;
 

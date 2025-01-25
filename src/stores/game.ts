@@ -4,6 +4,13 @@ import { sudokuGenerator } from '@/utils/sudokuGenerator.ts';
 import { scoreApi } from '@/api';
 import { useAuthStore } from './auth';
 
+/**
+ * @store GameStore
+ * @description Central store managing Sudoku game state and logic
+ * Handles game initialization, move validation, scoring, and game progression
+ * Integrates with authentication and leaderboard systems
+ */
+
 export const useGameStore = defineStore('game', {
 	state: (): GameState => ({
 		grid: Array(9)
@@ -40,6 +47,7 @@ export const useGameStore = defineStore('game', {
 	}),
 
 	actions: {
+		// Saves your score to the leaderboard if you're logged in
 		async saveScore() {
 			const authStore = useAuthStore();
 			if (this.isGameComplete && !authStore.user.isGuest && authStore.user.id) {
@@ -58,6 +66,7 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Gets the latest high scores from the server
 		async fetchLeaderboard() {
 			try {
 				const response = await scoreApi.getLeaderboard();
@@ -69,6 +78,8 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Takes a solved puzzle and hides numbers based on difficulty
+		// More numbers are hidden for harder difficulties
 		createPuzzleFromSolution(solution: number[][], difficulty: GameDifficulty) {
 			const puzzle = solution.map((row) =>
 				row.map((value) => ({
@@ -79,6 +90,7 @@ export const useGameStore = defineStore('game', {
 				}))
 			);
 
+			// Different difficulties have different ranges of visible numbers
 			const totalCells = 81;
 			const visibleCellsRange = {
 				[GameDifficulty.BEGINNER]: { min: 36, max: 40 },
@@ -87,11 +99,13 @@ export const useGameStore = defineStore('game', {
 				[GameDifficulty.EXPERT]: { min: 24, max: 28 },
 			};
 
+			// Pick random number of cells to show within difficulty range
 			const range = visibleCellsRange[difficulty];
 			const visibleCells =
 				Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
 			const cellsToHide = totalCells - visibleCells;
 
+			// Randomly hide cells until we reach target number
 			let hiddenCells = 0;
 			while (hiddenCells < cellsToHide) {
 				const row = Math.floor(Math.random() * 9);
@@ -111,6 +125,8 @@ export const useGameStore = defineStore('game', {
 			return puzzle;
 		},
 
+		// Handles when you put a number in a cell
+		// Checks if it's correct and updates your score
 		makeMove(row: number, col: number, value: number) {
 			if (this.grid[row][col].isPrefilled) return;
 
@@ -132,6 +148,8 @@ export const useGameStore = defineStore('game', {
 			});
 		},
 
+		// Checks if a move follows Sudoku rules
+		// Updates the cell's error state and score
 		validateMove(row: number, col: number) {
 			const value = this.grid[row][col].value;
 			let hasError = false;
@@ -147,6 +165,8 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Checks if you've completed any rows, columns, or boxes
+		// Called after each move
 		checkCompletedSections(row: number, col: number) {
 			const isRowComplete = this.grid[row].every(
 				(cell) =>
@@ -169,6 +189,7 @@ export const useGameStore = defineStore('game', {
 			const boxCol = Math.floor(col / 3) * 3;
 			let isBoxComplete = true;
 
+			// Check all cells in the 3x3 box
 			for (let i = 0; i < 3 && isBoxComplete; i++) {
 				for (let j = 0; j < 3; j++) {
 					const cell = this.grid[boxRow + i][boxCol + j];
@@ -186,6 +207,7 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Marks a section (row/column/box) as complete
 		addCompletedSection(type: 'row' | 'column' | 'box', index: number) {
 			const sectionExists = this.completedSections.some(
 				(section) => section.type === type && section.index === index
@@ -200,6 +222,8 @@ export const useGameStore = defineStore('game', {
 			this.baseScore += isError ? -1 : 5;
 		},
 
+		// Gives you the correct number for a cell
+		// Costs points and increases future hint penalties
 		useHint(row: number, col: number) {
 			if (this.hintsRemaining > 0 && !this.grid[row][col].isPrefilled) {
 				const correctValue = this.solution[row][col];
@@ -211,7 +235,7 @@ export const useGameStore = defineStore('game', {
 
 				this.baseScore -= this.hintPenalty;
 				this.hintsRemaining--;
-				this.hintPenalty++;
+				this.hintPenalty++; // Each subsequent hint costs more
 
 				const scoreChange = this.baseScore - previousScore;
 
@@ -228,6 +252,8 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Takes back your last move
+		// Removes any errors and rechecks completed sections
 		undoMove() {
 			const lastMove = this.movesHistory.pop();
 			if (lastMove) {
@@ -240,6 +266,7 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Rechecks all completed sections after undoing
 		revalidateCompletedSections() {
 			this.completedSections = [];
 			for (let i = 0; i < 9; i++) {
@@ -251,12 +278,15 @@ export const useGameStore = defineStore('game', {
 			}
 		},
 
+		// Adds time bonus and saves your final score
 		async calculateFinalScore() {
 			this.timeBonus = Math.max(0, 500 - this.gameTime);
 			this.gameStatus = GameStatus.COMPLETED;
 			await this.saveScore();
 		},
 
+		// Sets up a new game with chosen difficulty
+		// Generates puzzle and resets all game stats
 		async initializeGame(difficulty: GameDifficulty) {
 			const solution = sudokuGenerator.generateSolution();
 			this.solution = JSON.parse(JSON.stringify(solution));
