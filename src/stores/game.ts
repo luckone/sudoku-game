@@ -175,7 +175,7 @@ export const useGameStore = defineStore('game', {
 			const isColumnComplete = this.grid.every(
 				(rowArray) =>
 					!rowArray[col].hasError &&
-					rowArray[col].value === this.solution[rowArray[col].value - 1][col]
+					rowArray[col].value === this.solution[row][col]
 			);
 			if (isColumnComplete) {
 				this.addCompletedSection('column', col);
