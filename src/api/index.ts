@@ -1,5 +1,10 @@
 import axios from 'axios';
-import type { User, GameDifficulty, LeaderboardEntry } from '@/types/game';
+import { GameDifficulty, type User, type LeaderboardEntry } from '@/types/game';
+import {
+	isValidLeaderboardEntry,
+	sanitizeLeaderboardEntry,
+	createEmptyLeaderboard,
+} from '@/utils/validators';
 
 const api = axios.create({
 	baseURL: 'https://sudoku-game-backend-production.up.railway.app/api',
@@ -20,15 +25,25 @@ export const scoreApi = {
 		difficulty: GameDifficulty;
 	}) => {
 		const response = await api.post<LeaderboardEntry>('/scores', score);
-		return response.data;
+		return sanitizeLeaderboardEntry(response.data);
 	},
 
 	getLeaderboard: async (): Promise<
 		Record<GameDifficulty, LeaderboardEntry[]>
 	> => {
 		const response = await api.get<{
-			leaderboard: Record<GameDifficulty, LeaderboardEntry[]>;
+			leaderboard: Record<GameDifficulty, unknown>;
 		}>('/scores/leaderboard');
-		return response.data.leaderboard;
+		const data = response.data.leaderboard;
+		const validLeaderboard = createEmptyLeaderboard();
+
+		Object.values(GameDifficulty).forEach((difficulty) => {
+			const entries = Array.isArray(data[difficulty]) ? data[difficulty] : [];
+			validLeaderboard[difficulty] = entries
+				.filter(isValidLeaderboardEntry)
+				.map(sanitizeLeaderboardEntry);
+		});
+
+		return validLeaderboard;
 	},
 };
